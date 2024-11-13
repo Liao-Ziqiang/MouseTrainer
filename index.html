@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>鼠标点击训练</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f0f4f8;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      width: 100%;
+    }
+
+    .settings {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #1e90ff;
+      padding: 15px 20px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 800px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-top: 20px;
+      color: white;
+    }
+
+    .settings label {
+      margin-right: 10px;
+    }
+
+    .settings input {
+      padding: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      width: 80px;
+    }
+
+    .settings button {
+      padding: 10px 20px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      margin-left: 10px;
+    }
+
+    .settings button:hover {
+      background-color: #218838;
+    }
+
+    .target {
+      position: absolute;
+      border-radius: 50%;
+      background-color: #ff6347;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .target:hover {
+      background-color: #ff4500;
+    }
+
+    .log {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="settings" id="settings-bar">
+      <div>
+        <label for="interval-time">间隔时间(ms):</label>
+        <input type="number" id="interval-time" value="1000" min="100">
+        <label for="min-radius">半径下界(px):</label>
+        <input type="number" id="min-radius" value="10" min="5">
+        <label for="max-radius">半径上界(px):</label>
+        <input type="number" id="max-radius" value="50" min="5">
+      </div>
+      <div>
+        <button id="start-btn">开始</button>
+        <button id="stop-btn" disabled>结束</button>
+      </div>
+    </div>
+
+    <div class="log" id="log">点击 "开始" 以开始训练</div>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('start-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const log = document.getElementById('log');
+    const intervalInput = document.getElementById('interval-time');
+    const minRadiusInput = document.getElementById('min-radius');
+    const maxRadiusInput = document.getElementById('max-radius');
+    const settingsBar = document.getElementById('settings-bar');
+    let target = null;
+    let timeoutId = null;
+    let clickCount = 0;
+    let missCount = 0;
+
+    // 获取随机位置，确保不在设置栏范围，并且不越界
+    function getRandomPosition(radius) {
+      const settingsHeight = settingsBar.offsetHeight; // 获取设置栏高度
+      const maxWidth = window.innerWidth - radius * 2; // 窗口宽度 - 圆点直径
+      const maxHeight = window.innerHeight - radius * 2 - settingsHeight; // 窗口高度 - 圆点直径 - 设置栏高度
+      const x = Math.floor(Math.random() * maxWidth);
+      const y = Math.floor(Math.random() * maxHeight) + settingsHeight; // 确保 y 轴从设置栏下方开始
+      return { x, y };
+    }
+
+    // 获取随机半径
+    function getRandomRadius(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    // 创建新的目标
+    function createTarget() {
+      if (target) {
+        target.remove(); // 移除上一个目标
+      }
+
+      const minRadius = parseInt(minRadiusInput.value) || 10;
+      const maxRadius = parseInt(maxRadiusInput.value) || 50;
+      const radius = getRandomRadius(minRadius, maxRadius);
+      const { x, y } = getRandomPosition(radius);
+
+      // 创建新的目标元素
+      target = document.createElement('div');
+      target.classList.add('target');
+      target.style.width = `${radius * 2}px`;
+      target.style.height = `${radius * 2}px`;
+      target.style.left = `${x}px`;
+      target.style.top = `${y}px`;
+
+      target.addEventListener('click', handleTargetClick); // 添加点击事件
+      document.body.appendChild(target);
+
+      // 设置下一个目标的超时
+      const intervalTime = parseInt(intervalInput.value) || 1000;
+      clearTimeout(timeoutId); // 清除上一次的超时计时器
+      timeoutId = setTimeout(() => {
+        missCount++;
+        updateLog();
+        createTarget(); // 超时则生成新的目标
+      }, intervalTime);
+    }
+
+    // 处理目标点击事件
+    function handleTargetClick() {
+      clickCount++;
+      updateLog();
+      createTarget(); // 点击后立即生成新的目标
+    }
+
+    // 更新日志显示
+    function updateLog() {
+      log.textContent = `点击成功: ${clickCount} 次，点击失败: ${missCount} 次`;
+    }
+
+    // 开始游戏
+    function startGame() {
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      clickCount = 0;
+      missCount = 0;
+      updateLog();
+      createTarget(); // 开始游戏时生成第一个目标
+    }
+
+    // 结束游戏
+    function stopGame() {
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      clearTimeout(timeoutId); // 清除超时计时器
+      if (target) {
+        target.remove(); // 移除当前目标
+        target = null;
+      }
+      log.textContent = `游戏结束。点击成功: ${clickCount} 次，点击失败: ${missCount} 次`;
+    }
+
+    startBtn.addEventListener('click', startGame);
+    stopBtn.addEventListener('click', stopGame);
+
+    // 窗口大小调整时，重新生成目标以避免越界
+    window.addEventListener('resize', () => {
+      if (target) {
+        target.remove();
+        createTarget();
+      }
+    });
+  </script>
+
+</body>
+</html>
